@@ -3,6 +3,7 @@ import fastapi
 app = fastapi.FastAPI()
 
 
-@app.get("/hi")
-async def sit():
-    return "hello world"
+@app.get("/events/today")
+async def list_today_events():
+    events = []
+    return events
