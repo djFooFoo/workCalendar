@@ -3,6 +3,7 @@ import os
 
 import fastapi
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
@@ -11,12 +12,19 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 app = fastapi.FastAPI()
 
 
-def create_token():
-    if os.path.exists('credentials.json'):
+def initialise_token():
+    credentials = None
+    if os.path.exists("token.json"):
+        credentials = Credentials.from_authorized_user_file('token.json', SCOPES)
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+
+    elif os.path.exists('credentials.json'):
         flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
         credentials = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(credentials.to_json())
+
+    with open('token.json', 'w') as token:
+        token.write(credentials.to_json())
 
 
 def current_time_start_of_day():
@@ -34,12 +42,10 @@ def current_time_end_of_day():
     return value
 
 
-if not os.path.exists("token.json"):
-    create_token()
-
-
 @app.get("/events/today")
 async def list_today_events():
+    initialise_token()
+
     events = get_events_of_today()
 
     if not events:
@@ -53,6 +59,8 @@ async def list_today_events():
 
 @app.get("/events/stand-up")
 async def list_today_events():
+    initialise_token()
+
     events = get_events_of_today()
 
     results = [event for event in events if 'Stand-Up' in event['summary']]
